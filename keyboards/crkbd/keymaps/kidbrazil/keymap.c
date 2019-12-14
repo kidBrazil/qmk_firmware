@@ -6,6 +6,8 @@ extern rgblight_config_t rgblight_config;
 #endif
 
 extern uint8_t is_master;
+// Oled timer similar to Drashna's
+static uint32_t oled_timer = 0;
 
 enum crkbd_layers {
     _QWERTY,
@@ -57,6 +59,17 @@ int RGB_current_mode;
 void persistent_default_layer_set(uint16_t default_layer) {
     eeconfig_update_default_layer(default_layer);
     default_layer_set(default_layer);
+}
+
+// Use process_record_keymap to reset timer on keypress
+bool process_record_keymap(uint16_t keycode, keyrecord_t *record) {
+    if (record->event.pressed) {
+#ifdef OLED_DRIVER_ENABLE
+        // Reset Timer
+        oled_timer = timer_read32();
+#endif
+    }
+    return true;
 }
 
 #ifdef OLED_DRIVER_ENABLE
@@ -173,30 +186,29 @@ void render_slave_oled(void) {
 }
 
 // OLED Task
-void oled_task_user(void){
-    switch (USB_DeviceState) {
-      case DEVICE_STATE_Unattached:
-      case DEVICE_STATE_Powered:
-      case DEVICE_STATE_Suspended:
-        render_logo();
-        break;
-      default:
-        if (is_master) {
-          render_master_oled();
-        } else {
-          render_slave_oled();
-        }
-    }
+void oled_task_user(void) {
+      if (timer_elapsed32(oled_timer) > 30000) {
+          oled_off();
+          rgblight_disable_noeeprom()
+          return;
+      }
+      else {
+          oled_on();
+          rgblight_enable_noeeprom()
+      }
+
+      switch (USB_DeviceState) {
+          case DEVICE_STATE_Unattached:
+          case DEVICE_STATE_Powered:
+          case DEVICE_STATE_Suspended:
+            render_logo();
+            break;
+          default:
+            if (is_master) {
+                render_master_oled();
+            } else {
+                render_slave_oled();
+            }
+      }
 }
 #endif
-
-// Suspend / Wake -----------------
-void suspend_power_down_kb(void) {
-    rgb_matrix_set_suspend_state(true);
-    oled_off();
-}
-
-void suspend_wakeup_init_user(void) {
-    rgb_matrix_set_suspend_state(false);
-    oled_on();
-}
