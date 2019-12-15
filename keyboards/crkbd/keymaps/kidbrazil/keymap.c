@@ -70,7 +70,7 @@ void persistent_default_layer_set(uint16_t default_layer) {
 // }
 
 // [Process User Input] ------------------------------------------------------//
-bool process_record_keymap(uint16_t keycode, keyrecord_t *record) {
+bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     // Use process_record_keymap to reset timer on keypress
     if (record->event.pressed) {
         oled_timer = timer_read32();
