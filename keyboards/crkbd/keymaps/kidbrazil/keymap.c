@@ -1,8 +1,6 @@
 #include QMK_KEYBOARD_H
 
 // [Init Variables] ----------------------------------------------------------//
-//Following line allows macro to read current RGB settings
-extern rgblight_config_t rgblight_config;
 extern uint8_t is_master;
 // Oled timer similar to Drashna's
 static uint32_t oled_timer = 0;
@@ -64,17 +62,17 @@ void persistent_default_layer_set(uint16_t default_layer) {
 
 // [Process User Input] ------------------------------------------------------//
 bool process_record_keymap(uint16_t keycode, keyrecord_t *record) {
+    // Get current EEPROM RGB settings...
+    rgblight_config_t rgblight_config;
+    rgblight_config.raw = eeconfig_read_rgblight();
     // Use process_record_keymap to reset timer on keypress
     if (record->event.pressed) {
-        // Get current EEPROM RGB settings...
-        rgblight_config_t rgblight_config;
-        rgblight_config.raw = eeconfig_read_rgblight();
 
         #ifdef OLED_DRIVER_ENABLE
             // Reset Timer to restore OLED
             oled_timer = timer_read32();
         #endif
-        
+
         // Restore LEDs if they are enabled in eeprom
         if (rgblight_config.enable) {
             rgblight_enable_noeeprom()
@@ -204,7 +202,7 @@ void oled_task_user(void) {
       // Drashna style timeout for LED and OLED
       if (timer_elapsed32(oled_timer) > 30000) {
           oled_off();
-          rgblight_disable_noeeprom()
+          rgblight_disable_noeeprom();
           return;
       }
       else {
