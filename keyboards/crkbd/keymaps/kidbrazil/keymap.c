@@ -62,12 +62,12 @@ void persistent_default_layer_set(uint16_t default_layer) {
     default_layer_set(default_layer);
 }
 
-void matrix_scan_user(void) {
-    rgblight_config_t rgblight_config;
-    rgblight_config.raw = eeconfig_read_rgblight();
-    // Save LED State
-    eeprom_oled_enabled = rgblight_config.enable;
-}
+// void matrix_scan_user(void) {
+//     rgblight_config_t rgblight_config;
+//     rgblight_config.raw = eeconfig_read_rgblight();
+//     // Save LED State
+//     eeprom_oled_enabled = rgblight_config.enable;
+// }
 
 // [Process User Input] ------------------------------------------------------//
 bool process_record_keymap(uint16_t keycode, keyrecord_t *record) {
@@ -80,9 +80,8 @@ bool process_record_keymap(uint16_t keycode, keyrecord_t *record) {
         #endif
 
         // Restore LEDs if they are enabled in eeprom
-        if (eeprom_oled_enabled) {
-            rgblight_enable_noeeprom();
-        }
+        rgb_matrix_enable_noeeprom();
+
     }
     return true;
 }
@@ -208,7 +207,7 @@ void oled_task_user(void) {
       // Drashna style timeout for LED and OLED
       if (timer_elapsed32(oled_timer) > 30000) {
           oled_off();
-          rgblight_disable_noeeprom();
+          rgb_matrix_disable_noeeprom();
           return;
       }
       else {
