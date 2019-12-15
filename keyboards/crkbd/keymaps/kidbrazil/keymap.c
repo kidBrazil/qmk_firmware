@@ -73,15 +73,9 @@ void persistent_default_layer_set(uint16_t default_layer) {
 bool process_record_keymap(uint16_t keycode, keyrecord_t *record) {
     // Use process_record_keymap to reset timer on keypress
     if (record->event.pressed) {
-
-        #ifdef OLED_DRIVER_ENABLE
-            // Reset Timer to restore OLED
-            oled_timer = timer_read32();
-        #endif
-
+        oled_timer = timer_read32();
         // Restore LEDs if they are enabled in eeprom
         rgb_matrix_enable_noeeprom();
-
     }
     return true;
 }
