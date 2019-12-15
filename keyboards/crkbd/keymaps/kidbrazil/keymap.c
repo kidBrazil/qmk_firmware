@@ -1,14 +1,13 @@
 #include QMK_KEYBOARD_H
 
-#ifdef RGBLIGHT_ENABLE
+// [Init Variables] ----------------------------------------------------------//
 //Following line allows macro to read current RGB settings
 extern rgblight_config_t rgblight_config;
-#endif
-
 extern uint8_t is_master;
 // Oled timer similar to Drashna's
 static uint32_t oled_timer = 0;
 
+// [CRKBD layers Init] -------------------------------------------------------//
 enum crkbd_layers {
     _QWERTY,
     _NUM,
@@ -17,6 +16,7 @@ enum crkbd_layers {
     _WEAPON
 };
 
+// [Keymaps] -----------------------------------------------------------------//
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 	  [_QWERTY] = LAYOUT(\
       KC_ESC, KC_Q, KC_W, KC_E, KC_R, KC_T,                                  KC_Y, KC_U, KC_I, KC_O, KC_P, KC_BSPC,\
@@ -54,43 +54,57 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     )
 };
 
-int RGB_current_mode;
+//int RGB_current_mode;
 
+// [Persistent Default Layer] ------------------------------------------------//
 void persistent_default_layer_set(uint16_t default_layer) {
     eeconfig_update_default_layer(default_layer);
     default_layer_set(default_layer);
 }
 
-// Use process_record_keymap to reset timer on keypress
+// [Process User Input] ------------------------------------------------------//
 bool process_record_keymap(uint16_t keycode, keyrecord_t *record) {
+    // Use process_record_keymap to reset timer on keypress
     if (record->event.pressed) {
-#ifdef OLED_DRIVER_ENABLE
-        // Reset Timer
-        oled_timer = timer_read32();
-#endif
+        // Get current EEPROM RGB settings...
+        rgblight_config_t rgblight_config;
+        rgblight_config.raw = eeconfig_read_rgblight();
+
+        #ifdef OLED_DRIVER_ENABLE
+            // Reset Timer to restore OLED
+            oled_timer = timer_read32();
+        #endif
+        
+        // Restore LEDs if they are enabled in eeprom
+        if (rgblight_config.enable) {
+            rgblight_enable_noeeprom()
+        }
     }
     return true;
 }
 
+// [OLED Configuration] ------------------------------------------------------//
 #ifdef OLED_DRIVER_ENABLE
 
-// Set LED Rotation
+// Init Oled and Rotate....
 oled_rotation_t oled_init_user(oled_rotation_t rotation) {
     if (!has_usb())
       return OLED_ROTATION_180;  // flips the display 180 to see it from my side
     return rotation;
 }
 
-// Load logo from font
+// Read logo from font file
 const char *read_logo(void);
+
+// {OLED helpers} -----------------------------------------------//
 
 // Render Blank Space
 void render_space(void) {
     oled_write_ln_P(PSTR("     "), false);
 }
 
+// Render separator lines for oled display
 void render_separator(void) {
-    // Switch display based on Layer
     switch (biton32(layer_state)){
         case _GAME:
         case _WEAPON:
@@ -101,7 +115,7 @@ void render_separator(void) {
     }
 }
 
-// Render Current Layer
+// Render current layer state
 void render_layer_state(void){
 	// If you want to change the display of OLED, you need to change here
     switch (biton32(layer_state)){
@@ -180,13 +194,14 @@ void render_master_oled(void) {
     }
 }
 
+// lave OLED scren (Right Hand)
 void render_slave_oled(void) {
-    //now print logo
     render_logo();
 }
 
-// OLED Task
+// {OLED Task} -----------------------------------------------//
 void oled_task_user(void) {
+      // Drashna style timeout for LED and OLED
       if (timer_elapsed32(oled_timer) > 30000) {
           oled_off();
           rgblight_disable_noeeprom()
@@ -194,9 +209,8 @@ void oled_task_user(void) {
       }
       else {
           oled_on();
-          rgblight_enable_noeeprom()
       }
-
+      // Show logo when USB dormant
       switch (USB_DeviceState) {
           case DEVICE_STATE_Unattached:
           case DEVICE_STATE_Powered:
