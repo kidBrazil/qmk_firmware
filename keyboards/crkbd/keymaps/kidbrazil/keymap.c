@@ -81,7 +81,7 @@ bool process_record_keymap(uint16_t keycode, keyrecord_t *record) {
 
         // Restore LEDs if they are enabled in eeprom
         if (eeprom_oled_enabled) {
-            rgblight_enable_noeeprom()
+            rgblight_enable_noeeprom();
         }
     }
     return true;
