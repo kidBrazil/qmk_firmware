@@ -4,6 +4,8 @@
 extern uint8_t is_master;
 // Oled timer similar to Drashna's
 static uint32_t oled_timer = 0;
+// Boolean to store
+bool eeprom_oled_enabled = false;
 
 // [CRKBD layers Init] -------------------------------------------------------//
 enum crkbd_layers {
@@ -60,11 +62,15 @@ void persistent_default_layer_set(uint16_t default_layer) {
     default_layer_set(default_layer);
 }
 
-// [Process User Input] ------------------------------------------------------//
-bool process_record_keymap(uint16_t keycode, keyrecord_t *record) {
-    // Get current EEPROM RGB settings...
+void matrix_scan_user(void) {
     rgblight_config_t rgblight_config;
     rgblight_config.raw = eeconfig_read_rgblight();
+    // Save LED State
+    eeprom_oled_enabled = rgblight_config.enable;
+}
+
+// [Process User Input] ------------------------------------------------------//
+bool process_record_keymap(uint16_t keycode, keyrecord_t *record) {
     // Use process_record_keymap to reset timer on keypress
     if (record->event.pressed) {
 
@@ -74,7 +80,7 @@ bool process_record_keymap(uint16_t keycode, keyrecord_t *record) {
         #endif
 
         // Restore LEDs if they are enabled in eeprom
-        if (rgblight_config.enable) {
+        if (eeprom_oled_enabled) {
             rgblight_enable_noeeprom()
         }
     }
