@@ -4,8 +4,6 @@
 extern uint8_t is_master;
 // Oled timer similar to Drashna's
 static uint32_t oled_timer = 0;
-// Boolean to store
-bool eeprom_oled_enabled = false;
 
 // [CRKBD layers Init] -------------------------------------------------------//
 enum crkbd_layers {
@@ -53,8 +51,19 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
                                 KC_TRNS, KC_TAB, KC_TRNS,             KC_SPC, KC_TRNS, KC_TRNS, KC_TRNS\
     )
 };
-
-//int RGB_current_mode;
+// [Matrix Helpers] ----------------------------------------------------------//
+void matrix_color_helper(uint8_t r, uint8_t g, uint8_t b) {
+    for (uint8_t i = 0; i < DRIVER_LED_TOTAL; i++) {
+        rgb_matrix_set_color(i, r, g, b);
+    }
+}
+// [Post Init Set LED]--------------------------------------------------------//
+void keyboard_post_init_user(void) {
+  // Set matrix to a known state
+  //rgb_matrix_enable_noeeprom();
+  rgb_matrix_enable();
+  rgb_matrix_set_color_all(RGB_GREEN);
+}
 
 // [Persistent Default Layer] ------------------------------------------------//
 void persistent_default_layer_set(uint16_t default_layer) {
@@ -62,24 +71,44 @@ void persistent_default_layer_set(uint16_t default_layer) {
     default_layer_set(default_layer);
 }
 
-// void matrix_scan_user(void) {
-//     rgblight_config_t rgblight_config;
-//     rgblight_config.raw = eeconfig_read_rgblight();
-//     // Save LED State
-//     eeprom_oled_enabled = rgblight_config.enable;
-// }
-
 // [Process User Input] ------------------------------------------------------//
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
+    rgb_config_t rgb_matrix_config;
+    eeconfig_read_rgb_matrix();
+
     // Use process_record_keymap to reset timer on keypress
     if (record->event.pressed) {
         #ifdef OLED_DRIVER_ENABLE
             oled_timer = timer_read32();
         #endif
         // Restore LEDs if they are enabled in eeprom
-        rgb_matrix_enable_noeeprom();
+        if (rgb_matrix_config.enable) {
+            rgb_matrix_enable_noeeprom();
+        }
     }
     return true;
+
+    // switch(keycode) {
+    //     case RGB_TOG:
+    //         if (record->event.pressed) {
+    //           // Do something when pressed
+    //         } else {
+    //           // Do something else when release
+    //         }
+    //         return false; // Skip all further processing of this key
+    //     default:
+    //         // Use process_record_keymap to reset timer on keypress
+    //         if (record->event.pressed) {
+    //             #ifdef OLED_DRIVER_ENABLE
+    //                 oled_timer = timer_read32();
+    //             #endif
+    //             // Restore LEDs if they are enabled in eeprom
+    //             if (matrix_is_enabled) {
+    //               rgb_matrix_enable_noeeprom();
+    //             }
+    //         }
+    //         return true;
+    //   }
 }
 
 // [OLED Configuration] ------------------------------------------------------//
@@ -198,30 +227,40 @@ void render_slave_oled(void) {
     render_logo();
 }
 
+// bool oled_cleared = false;
 // {OLED Task} -----------------------------------------------//
 void oled_task_user(void) {
-      // Drashna style timeout for LED and OLED Roughly 8mins
-      if (timer_elapsed32(oled_timer) > 480000) {
-          oled_off();
-          rgb_matrix_disable_noeeprom();
-          return;
-      }
-      else {
-          oled_on();
-      }
-      // Show logo when USB dormant
-      switch (USB_DeviceState) {
-          case DEVICE_STATE_Unattached:
-          case DEVICE_STATE_Powered:
-          case DEVICE_STATE_Suspended:
-            render_logo();
-            break;
-          default:
-            if (is_master) {
-                render_master_oled();
-            } else {
-                render_slave_oled();
-            }
-      }
+    if (timer_elapsed32(oled_timer) > 80000) {
+        render_logo();
+        return;
+    }
+    // Drashna style timeout for LED and OLED Roughly 8mins
+    else if (timer_elapsed32(oled_timer) > 480000) {
+        oled_off();
+        rgb_matrix_disable_noeeprom();
+        return;
+    }
+    else {
+        oled_on();
+        // Show logo when USB dormant
+        switch (USB_DeviceState) {
+            case DEVICE_STATE_Unattached:
+            case DEVICE_STATE_Powered:
+            case DEVICE_STATE_Suspended:
+                // if (!oled_cleared) {
+                //     oled_clear();
+                //     oled_cleared = true;
+                // }
+                render_logo();
+                break;
+            default:
+                // oled_cleared = false;
+                if (is_master) {
+                    render_master_oled();
+                } else {
+                    render_slave_oled();
+                }
+        }
+    }
 }
 #endif
